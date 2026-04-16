@@ -192,7 +192,7 @@ function BestPractices({ tips }) {
   )
 }
 
-function buildPDF(jsPDF, care, commonName, scientificName) {
+function buildPDF(jsPDF, care, commonName, scientificName, imageDataUrl) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const W = doc.internal.pageSize.getWidth()   // 210mm
   const H = doc.internal.pageSize.getHeight()  // 297mm
@@ -336,6 +336,16 @@ function buildPDF(jsPDF, care, commonName, scientificName) {
   doc.setFillColor(20, 83, 45)
   doc.rect(0, 0, W, 44, 'F')
 
+  // Plant photo — top-right corner of cover banner
+  if (imageDataUrl) {
+    try {
+      const imgX = W - MARGIN - 36
+      doc.addImage(imageDataUrl, 'JPEG', imgX, 4, 35, 35)
+    } catch {
+      // image embedding failed silently — no photo in PDF
+    }
+  }
+
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
   doc.setTextColor(160, 220, 180)
@@ -474,7 +484,23 @@ function buildPDF(jsPDF, care, commonName, scientificName) {
   return doc
 }
 
-function CareSection({ identId, scientificName, commonName }) {
+async function fetchImageAsDataUrl(imageFilename) {
+  try {
+    const resp = await fetch(`/uploads/${imageFilename}`)
+    if (!resp.ok) return null
+    const blob = await resp.blob()
+    return await new Promise(resolve => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result)
+      reader.onerror = () => resolve(null)
+      reader.readAsDataURL(blob)
+    })
+  } catch {
+    return null
+  }
+}
+
+function CareSection({ identId, scientificName, commonName, imageFilename }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -482,11 +508,12 @@ function CareSection({ identId, scientificName, commonName }) {
     setLoading(true)
     setError(null)
     try {
-      const [{ jsPDF }, care] = await Promise.all([
+      const [{ jsPDF }, care, imageDataUrl] = await Promise.all([
         import('jspdf'),
         getCare(identId),
+        imageFilename ? fetchImageAsDataUrl(imageFilename) : Promise.resolve(null),
       ])
-      const doc = buildPDF(jsPDF, care, commonName, scientificName)
+      const doc = buildPDF(jsPDF, care, commonName, scientificName, imageDataUrl)
       doc.setProperties({ title: `${commonName} Care Guide — LeafLens` })
       const slug = commonName.replace(/\s+/g, '_').toLowerCase()
       doc.save(`${slug}_care_guide.pdf`)
@@ -506,17 +533,15 @@ function CareSection({ identId, scientificName, commonName }) {
   )
 
   return (
-    <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-      <div>
-        <p className="card-title" style={{ marginBottom: '.25rem' }}>Care Guide</p>
-        <p style={{ fontSize: '.85rem', color: 'var(--gray-500)' }}>
-          Full care report with light, watering, soil, feeding, propagation, common problems and more.
-        </p>
-      </div>
-      <button className="btn btn-primary" onClick={downloadPDF} disabled={loading}>
+    <div className="card">
+      <p className="card-title" style={{ marginBottom: '.3rem' }}>Care Guide</p>
+      <p style={{ fontSize: '.82rem', color: 'var(--gray-500)', marginBottom: '.85rem', lineHeight: 1.5 }}>
+        Full report: light, watering, soil, feeding, propagation &amp; more.
+      </p>
+      <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={downloadPDF} disabled={loading}>
         {loading
-          ? <><span className="spinner" /> Generating PDF…</>
-          : <>&#8595; Download Care Guide PDF</>}
+          ? <><span className="spinner" /> Generating…</>
+          : <>&#8595; Download PDF</>}
       </button>
     </div>
   )
@@ -570,90 +595,147 @@ function JournalSaveSection({ identId }) {
 
 export default function ResultsView({ result, onReset }) {
   if (!result) return null
-
   const topConfidence = result.confidence
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h2 style={{ fontSize: '1.2rem', fontWeight: 700 }}>Results</h2>
-        <button className="btn btn-ghost" onClick={onReset}>← New Upload</button>
-      </div>
-
-      {/* Main ID card */}
-      <div className="card">
-        <p className="card-title">Identification</p>
-        <h3 style={{ fontSize: '1.4rem', fontWeight: 700 }}>{result.common_name}</h3>
-        <p style={{ fontStyle: 'italic', color: 'var(--gray-500)', marginBottom: '.75rem' }}>{result.scientific_name}</p>
-
-        <div className="taxonomy-row">
-          {result.family && <span className="tax-pill"><span>Family:</span> {result.family}</span>}
-          {result.genus && <span className="tax-pill"><span>Genus:</span> {result.genus}</span>}
+      {/* ── Dashboard header strip ── */}
+      <div className="dash-header">
+        {/* Left: plant identity */}
+        <div style={{ minWidth: 0 }}>
+          <h2 style={{
+            fontSize: 'clamp(1.35rem, 3vw, 1.85rem)',
+            fontWeight: 800,
+            color: '#fff',
+            lineHeight: 1.15,
+            marginBottom: '.3rem',
+          }}>
+            {result.common_name}
+          </h2>
+          <p style={{
+            fontStyle: 'italic',
+            color: 'rgba(180,230,195,.85)',
+            fontSize: '.95rem',
+            marginBottom: '.7rem',
+          }}>
+            {result.scientific_name}
+          </p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '.35rem' }}>
+            {result.family && (
+              <span style={{
+                background: 'rgba(255,255,255,.12)',
+                color: '#dcfce7',
+                borderRadius: '999px',
+                padding: '.2rem .65rem',
+                fontSize: '.78rem',
+                fontWeight: 500,
+              }}>
+                Family: {result.family}
+              </span>
+            )}
+            {result.genus && (
+              <span style={{
+                background: 'rgba(255,255,255,.12)',
+                color: '#dcfce7',
+                borderRadius: '999px',
+                padding: '.2rem .65rem',
+                fontSize: '.78rem',
+                fontWeight: 500,
+              }}>
+                Genus: {result.genus}
+              </span>
+            )}
+          </div>
         </div>
 
-        {result.description && (
-          <p style={{ fontSize: '.9rem', color: 'var(--gray-700)', marginBottom: '.75rem' }}>{result.description}</p>
-        )}
-
-        <div className="metrics-row">
-          <MetricChip label="Confidence" value={topConfidence} />
-          <MetricChip label="Precision" value={result.precision} />
-          <MetricChip label="Recall" value={result.recall} />
-          <MetricChip label="F1" value={result.f1} />
+        {/* Right: metrics + action */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '.75rem', flexShrink: 0 }}>
+          <div className="dash-metric-grid">
+            <MetricChip label="Confidence" value={topConfidence} />
+            <MetricChip label="Precision"  value={result.precision} />
+            <MetricChip label="Recall"     value={result.recall} />
+            <MetricChip label="F1"         value={result.f1} />
+          </div>
+          <button
+            className="btn btn-ghost"
+            onClick={onReset}
+            style={{ color: 'var(--white)', borderColor: 'rgba(255,255,255,.35)', fontSize: '.85rem', padding: '.35rem .9rem' }}
+          >
+            ← New Upload
+          </button>
         </div>
       </div>
 
-      {/* Alternatives */}
-      {result.alternatives && result.alternatives.length > 0 && (
-        <div className="card">
-          <p className="card-title">Alternative Species</p>
-          <ul className="alt-list">
-            <ConfidenceBar
-              label={result.common_name}
-              sublabel={result.scientific_name}
-              confidence={topConfidence}
-            />
-            {result.alternatives.map((alt, i) => (
-              <ConfidenceBar
-                key={i}
-                label={alt.common_name}
-                sublabel={alt.scientific_name}
-                confidence={alt.confidence}
+      {/* ── 3-column dashboard grid ── */}
+      <div className="dash-grid">
+
+        {/* ── Left column: image + care guide ── */}
+        <div>
+          {result.image_filename && (
+            <div className="card" style={{ padding: 0, overflow: 'hidden', marginBottom: '.875rem' }}>
+              <img
+                src={`/uploads/${result.image_filename}`}
+                alt="Uploaded plant"
+                style={{ width: '100%', aspectRatio: '1 / 1', objectFit: 'cover', display: 'block' }}
               />
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {/* Uploaded image */}
-      {result.image_filename && (
-        <div className="card">
-          <p className="card-title">Uploaded Image</p>
-          <img
-            src={`/uploads/${result.image_filename}`}
-            alt="Uploaded plant"
-            className="preview-img"
+            </div>
+          )}
+          <CareSection
+            identId={result.id}
+            scientificName={result.scientific_name}
+            commonName={result.common_name}
+            imageFilename={result.image_filename}
           />
         </div>
-      )}
 
-      <ToxicitySection
-        toxicPets={result.toxic_to_pets}
-        toxicChildren={result.toxic_to_children}
-        severityPets={result.toxicity_severity_pets}
-        severityChildren={result.toxicity_severity_children}
-        details={result.toxicity_details}
-      />
+        {/* ── Center column: description + alternatives + diseases ── */}
+        <div>
+          {result.description && (
+            <div className="card">
+              <p className="card-title">About this Plant</p>
+              <p style={{ fontSize: '.9rem', color: 'var(--gray-700)', lineHeight: 1.65 }}>
+                {result.description}
+              </p>
+            </div>
+          )}
 
-      <DiseaseSection diseases={result.diseases} />
+          {result.alternatives && result.alternatives.length > 0 && (
+            <div className="card">
+              <p className="card-title">Species Confidence</p>
+              <ul className="alt-list">
+                <ConfidenceBar
+                  label={result.common_name}
+                  sublabel={result.scientific_name}
+                  confidence={topConfidence}
+                />
+                {result.alternatives.map((alt, i) => (
+                  <ConfidenceBar
+                    key={i}
+                    label={alt.common_name}
+                    sublabel={alt.scientific_name}
+                    confidence={alt.confidence}
+                  />
+                ))}
+              </ul>
+            </div>
+          )}
 
-      <CareSection
-        identId={result.id}
-        scientificName={result.scientific_name}
-        commonName={result.common_name}
-      />
+          <DiseaseSection diseases={result.diseases} />
+        </div>
 
-      <JournalSaveSection identId={result.id} />
+        {/* ── Right column: toxicity + journal ── */}
+        <div>
+          <ToxicitySection
+            toxicPets={result.toxic_to_pets}
+            toxicChildren={result.toxic_to_children}
+            severityPets={result.toxicity_severity_pets}
+            severityChildren={result.toxicity_severity_children}
+            details={result.toxicity_details}
+          />
+          <JournalSaveSection identId={result.id} />
+        </div>
+
+      </div>
     </div>
   )
 }

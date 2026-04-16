@@ -42,7 +42,7 @@ export default function App() {
 
       <Routes>
         <Route path="/" element={
-          <main className="content">
+          <main className={result ? 'content-wide' : 'content'}>
             {result ? (
               <ResultsView result={result} onReset={() => setResult(null)} />
             ) : (
