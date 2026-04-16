@@ -45,7 +45,7 @@ cp .env.example .env
 
 ###
 
-quickstart for me
+iterative quickstart 
 
 Terminal 1 - PostgreSQL
 cd /workspaces/leaflens
