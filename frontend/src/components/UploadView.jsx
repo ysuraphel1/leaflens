@@ -55,7 +55,7 @@ export default function UploadView({ onResult }) {
           lineHeight: 1.15,
           marginBottom: '.65rem',
         }}>
-          Identify Plant Species
+          Let LeafLens Do the Looking.
         </h1>
         <p style={{
           fontSize: '1rem',
