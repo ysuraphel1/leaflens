@@ -48,14 +48,14 @@ export default function UploadView({ onResult }) {
       {/* ── Hero ── */}
       <div style={{ textAlign: 'center', padding: '2.5rem 1rem 2rem' }}>
         <h1 style={{
-          fontSize: 'clamp(1.9rem, 5vw, 2.6rem)',
+          fontSize: 'clamp(1.2rem, 3vw, 1.6rem)',
           fontWeight: 800,
           color: 'var(--green-900)',
           letterSpacing: '-.5px',
           lineHeight: 1.15,
           marginBottom: '.65rem',
         }}>
-          Let LeafLens Do the Looking.
+          Let LeafLens Do the Looking
         </h1>
         <p style={{
           fontSize: '1rem',
