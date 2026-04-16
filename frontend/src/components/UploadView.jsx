@@ -47,7 +47,7 @@ export default function UploadView({ onResult }) {
           marginBottom: '.25rem',
           lineHeight: 1.2,
         }}>
-          Identify Any Plant
+          Identify Plant
         </h2>
         <p style={{
           fontSize: '.9rem',
