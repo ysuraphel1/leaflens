@@ -489,12 +489,14 @@ async function fetchImageAsDataUrl(imageFilename) {
     const resp = await fetch(`/uploads/${imageFilename}`)
     if (!resp.ok) return null
     const blob = await resp.blob()
-    return await new Promise(resolve => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(reader.result)
-      reader.onerror = () => resolve(null)
-      reader.readAsDataURL(blob)
-    })
+    // createImageBitmap with imageOrientation:'from-image' applies the EXIF
+    // rotation so jsPDF receives already-upright pixel data.
+    const bitmap = await createImageBitmap(blob, { imageOrientation: 'from-image' })
+    const canvas = document.createElement('canvas')
+    canvas.width = bitmap.width
+    canvas.height = bitmap.height
+    canvas.getContext('2d').drawImage(bitmap, 0, 0)
+    return canvas.toDataURL('image/jpeg', 0.85)
   } catch {
     return null
   }
