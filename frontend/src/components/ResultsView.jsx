@@ -484,18 +484,67 @@ function buildPDF(jsPDF, care, commonName, scientificName, imageDataUrl) {
   return doc
 }
 
+function readExifOrientation(buf) {
+  const view = new DataView(buf)
+  if (view.getUint16(0) !== 0xFFD8) return 1
+  let offset = 2
+  while (offset < view.byteLength - 2) {
+    const marker = view.getUint16(offset)
+    offset += 2
+    if (marker === 0xFFE1) {
+      if (view.getUint32(offset + 2) !== 0x45786966) break // not 'Exif'
+      const le = view.getUint16(offset + 8) === 0x4949
+      const tiff = offset + 8
+      const dir = tiff + view.getUint32(tiff + 4, le)
+      const entries = view.getUint16(dir, le)
+      for (let i = 0; i < entries; i++) {
+        const e = dir + 2 + i * 12
+        if (view.getUint16(e, le) === 0x0112) return view.getUint16(e + 8, le)
+      }
+      break
+    } else if ((marker & 0xFF00) !== 0xFF00) {
+      break
+    } else {
+      offset += view.getUint16(offset)
+    }
+  }
+  return 1
+}
+
 async function fetchImageAsDataUrl(imageFilename) {
   try {
     const resp = await fetch(`/uploads/${imageFilename}`)
     if (!resp.ok) return null
     const blob = await resp.blob()
-    // createImageBitmap with imageOrientation:'from-image' applies the EXIF
-    // rotation so jsPDF receives already-upright pixel data.
-    const bitmap = await createImageBitmap(blob, { imageOrientation: 'from-image' })
+    const buf = await blob.slice(0, 64 * 1024).arrayBuffer()
+    const orientation = readExifOrientation(buf)
+
+    const url = URL.createObjectURL(blob)
+    const img = await new Promise((resolve, reject) => {
+      const i = new Image()
+      i.onload = () => resolve(i)
+      i.onerror = reject
+      i.src = url
+    })
+    URL.revokeObjectURL(url)
+
+    // Orientations 5-8 swap width/height
+    const swap = orientation >= 5
     const canvas = document.createElement('canvas')
-    canvas.width = bitmap.width
-    canvas.height = bitmap.height
-    canvas.getContext('2d').drawImage(bitmap, 0, 0)
+    canvas.width = swap ? img.height : img.width
+    canvas.height = swap ? img.width : img.height
+    const ctx = canvas.getContext('2d')
+    // Apply the EXIF transform so pixel data is upright before jsPDF reads it
+    switch (orientation) {
+      case 2: ctx.transform(-1,  0,  0,  1, img.width,              0); break
+      case 3: ctx.transform(-1,  0,  0, -1, img.width,     img.height); break
+      case 4: ctx.transform( 1,  0,  0, -1,          0,     img.height); break
+      case 5: ctx.transform( 0,  1,  1,  0,          0,              0); break
+      case 6: ctx.transform( 0,  1, -1,  0, img.height,              0); break
+      case 7: ctx.transform( 0, -1, -1,  0, img.height,     img.width); break
+      case 8: ctx.transform( 0, -1,  1,  0,          0,     img.width); break
+    }
+    ctx.drawImage(img, 0, 0)
     return canvas.toDataURL('image/jpeg', 0.85)
   } catch {
     return null
