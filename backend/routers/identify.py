@@ -5,6 +5,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from PIL import Image, ImageOps
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -83,6 +84,15 @@ async def identify(
                     detail=f"File exceeds {MAX_UPLOAD_SIZE_MB} MB limit.",
                 )
             out.write(chunk)
+
+    # Rewrite the file with EXIF orientation baked into the pixels so every
+    # downstream consumer (jsPDF, older browsers) sees upright pixel data.
+    try:
+        with Image.open(dest) as im:
+            corrected = ImageOps.exif_transpose(im)
+            corrected.save(dest)
+    except Exception:
+        pass
 
     # Call OpenAI Vision
     try:
