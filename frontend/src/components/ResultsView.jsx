@@ -646,6 +646,30 @@ function JournalSaveSection({ identId }) {
 
 export default function ResultsView({ result, onReset }) {
   if (!result) return null
+
+  if (result.common_name === 'Unknown' || result.confidence === 0) {
+    return (
+      <div style={{ maxWidth: '560px', margin: '3rem auto', textAlign: 'center', padding: '0 1rem' }}>
+        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🌿</div>
+        <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--green-900)', marginBottom: '.5rem' }}>
+          Plant not identified
+        </h2>
+        <p style={{ color: 'var(--gray-500)', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+          We couldn't identify the plant in your photo. Try again with a clearer image.
+        </p>
+        <ul style={{ textAlign: 'left', display: 'inline-block', color: 'var(--gray-600)', lineHeight: 2, marginBottom: '2rem', fontSize: '.9rem' }}>
+          <li>Make sure the plant fills most of the frame</li>
+          <li>Use good lighting and avoid shadows</li>
+          <li>Focus on a single leaf, flower, or stem</li>
+          <li>Avoid blurry or distant shots</li>
+        </ul>
+        <div>
+          <button className="btn btn-primary" onClick={onReset}>Try another photo</button>
+        </div>
+      </div>
+    )
+  }
+
   const topConfidence = result.confidence
 
   return (
