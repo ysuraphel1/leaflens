@@ -497,21 +497,23 @@ async function fetchImageAsDataUrl(imageFilename) {
     const resp = await fetch(`/uploads/${imageFilename}`)
     if (!resp.ok) return null
     const blob = await resp.blob()
-    // Backend normalises EXIF orientation on upload, so the stored file always
-    // has upright pixel data — no canvas rotation needed here.
-    const dataUrl = await new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(reader.result)
-      reader.onerror = reject
-      reader.readAsDataURL(blob)
-    })
+    const url = URL.createObjectURL(blob)
     const img = await new Promise((resolve, reject) => {
       const i = new Image()
       i.onload = () => resolve(i)
       i.onerror = reject
-      i.src = dataUrl
+      i.src = url
     })
-    return { dataUrl, w: img.naturalWidth, h: img.naturalHeight }
+    URL.revokeObjectURL(url)
+    // Draw through a canvas so the output JPEG has correct pixel orientation
+    // with no EXIF tag. In all modern browsers drawImage + naturalWidth/Height
+    // both respect the image's EXIF orientation, so the canvas is always upright.
+    const canvas = document.createElement('canvas')
+    canvas.width = img.naturalWidth
+    canvas.height = img.naturalHeight
+    canvas.getContext('2d').drawImage(img, 0, 0)
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92)
+    return { dataUrl, w: canvas.width, h: canvas.height }
   } catch {
     return null
   }
