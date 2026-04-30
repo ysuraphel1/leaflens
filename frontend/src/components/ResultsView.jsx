@@ -339,8 +339,16 @@ function buildPDF(jsPDF, care, commonName, scientificName, imageDataUrl) {
   // Plant photo — top-right corner of cover banner
   if (imageDataUrl) {
     try {
-      const imgX = W - MARGIN - 36
-      doc.addImage(imageDataUrl, 'JPEG', imgX, 4, 35, 35)
+      const { dataUrl, w, h } = imageDataUrl
+      // Fit within a 35×36 mm box while preserving aspect ratio
+      const BOX_W = 35, BOX_H = 36
+      let imgW, imgH
+      if (w / h > BOX_W / BOX_H) {
+        imgW = BOX_W; imgH = BOX_W * (h / w)
+      } else {
+        imgH = BOX_H; imgW = BOX_H * (w / h)
+      }
+      doc.addImage(dataUrl, 'JPEG', W - MARGIN - imgW, 4 + (BOX_H - imgH) / 2, imgW, imgH)
     } catch {
       // image embedding failed silently — no photo in PDF
     }
@@ -484,41 +492,11 @@ function buildPDF(jsPDF, care, commonName, scientificName, imageDataUrl) {
   return doc
 }
 
-function readExifOrientation(buf) {
-  const view = new DataView(buf)
-  if (view.getUint16(0) !== 0xFFD8) return 1
-  let offset = 2
-  while (offset < view.byteLength - 2) {
-    const marker = view.getUint16(offset)
-    offset += 2
-    if (marker === 0xFFE1) {
-      if (view.getUint32(offset + 2) !== 0x45786966) break // not 'Exif'
-      const le = view.getUint16(offset + 8) === 0x4949
-      const tiff = offset + 8
-      const dir = tiff + view.getUint32(tiff + 4, le)
-      const entries = view.getUint16(dir, le)
-      for (let i = 0; i < entries; i++) {
-        const e = dir + 2 + i * 12
-        if (view.getUint16(e, le) === 0x0112) return view.getUint16(e + 8, le)
-      }
-      break
-    } else if ((marker & 0xFF00) !== 0xFF00) {
-      break
-    } else {
-      offset += view.getUint16(offset)
-    }
-  }
-  return 1
-}
-
 async function fetchImageAsDataUrl(imageFilename) {
   try {
     const resp = await fetch(`/uploads/${imageFilename}`)
     if (!resp.ok) return null
     const blob = await resp.blob()
-    const buf = await blob.slice(0, 64 * 1024).arrayBuffer()
-    const orientation = readExifOrientation(buf)
-
     const url = URL.createObjectURL(blob)
     const img = await new Promise((resolve, reject) => {
       const i = new Image()
@@ -527,25 +505,13 @@ async function fetchImageAsDataUrl(imageFilename) {
       i.src = url
     })
     URL.revokeObjectURL(url)
-
-    // Orientations 5-8 swap width/height
-    const swap = orientation >= 5
+    // naturalWidth/naturalHeight reflect EXIF-corrected dimensions in all
+    // modern browsers; drawImage also respects EXIF, so no manual rotation needed.
     const canvas = document.createElement('canvas')
-    canvas.width = swap ? img.height : img.width
-    canvas.height = swap ? img.width : img.height
-    const ctx = canvas.getContext('2d')
-    // Apply the EXIF transform so pixel data is upright before jsPDF reads it
-    switch (orientation) {
-      case 2: ctx.transform(-1,  0,  0,  1, img.width,              0); break
-      case 3: ctx.transform(-1,  0,  0, -1, img.width,     img.height); break
-      case 4: ctx.transform( 1,  0,  0, -1,          0,     img.height); break
-      case 5: ctx.transform( 0,  1,  1,  0,          0,              0); break
-      case 6: ctx.transform( 0,  1, -1,  0, img.height,              0); break
-      case 7: ctx.transform( 0, -1, -1,  0, img.height,     img.width); break
-      case 8: ctx.transform( 0, -1,  1,  0,          0,     img.width); break
-    }
-    ctx.drawImage(img, 0, 0)
-    return canvas.toDataURL('image/jpeg', 0.85)
+    canvas.width = img.naturalWidth
+    canvas.height = img.naturalHeight
+    canvas.getContext('2d').drawImage(img, 0, 0)
+    return { dataUrl: canvas.toDataURL('image/jpeg', 0.85), w: img.naturalWidth, h: img.naturalHeight }
   } catch {
     return null
   }
