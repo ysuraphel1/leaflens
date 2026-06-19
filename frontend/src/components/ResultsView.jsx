@@ -560,7 +560,7 @@ function CareSection({ identId, scientificName, commonName, imageFilename }) {
       <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={downloadPDF} disabled={loading}>
         {loading
           ? <><span className="spinner" /> Generating…</>
-          : <>&#8595; Download PDF</>}
+          : <><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '6px', verticalAlign: 'middle', marginTop: '-2px' }}><path d="M12 3v13"/><polyline points="7 13 12 18 17 13"/><line x1="4" y1="21" x2="20" y2="21"/></svg>Download PDF</>}
       </button>
     </div>
   )
