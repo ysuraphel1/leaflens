@@ -40,9 +40,6 @@ class IdentificationResponse(BaseModel):
     genus: str | None
     description: str | None
     confidence: float
-    precision: float
-    recall: float
-    f1: float
     alternatives: list[AlternativeSpecies]
     diseases: list[DiseaseResult]
     toxic_to_pets: bool | None
@@ -113,9 +110,6 @@ async def identify(
         genus=data.get("genus"),
         description=data.get("description"),
         confidence=data.get("confidence", 0.0),
-        precision=data.get("precision", 0.0),
-        recall=data.get("recall", 0.0),
-        f1=data.get("f1", 0.0),
         alternatives=data.get("alternatives", []),
         diseases=data.get("diseases", []),
         toxic_to_pets=data.get("toxic_to_pets"),
@@ -137,9 +131,6 @@ async def identify(
         genus=record.genus,
         description=record.description,
         confidence=record.confidence,
-        precision=record.precision,
-        recall=record.recall,
-        f1=record.f1,
         alternatives=[AlternativeSpecies(**a) for a in (record.alternatives or [])],
         diseases=[DiseaseResult(**d) for d in (record.diseases or [])],
         toxic_to_pets=record.toxic_to_pets,

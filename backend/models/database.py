@@ -33,11 +33,7 @@ class Identification(Base):
     genus = Column(String(128), nullable=True)
     description = Column(Text, nullable=True)
 
-    # Classification metrics
     confidence = Column(Float, nullable=False)
-    precision = Column(Float, nullable=True)
-    recall = Column(Float, nullable=True)
-    f1 = Column(Float, nullable=True)
 
     # Top-N alternatives stored as JSONB list
     # [{"common_name": ..., "scientific_name": ..., "confidence": ...}]

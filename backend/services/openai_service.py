@@ -1,11 +1,10 @@
 """OpenAI Vision & GPT-4 services for plant identification and care synthesis."""
 
 import base64
-import hashlib
 import json
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 from openai import AsyncOpenAI
 
@@ -29,29 +28,6 @@ def _extract_json(text: str) -> Dict[str, Any]:
     if not match:
         raise ValueError(f"No JSON object found in GPT response: {text[:300]}")
     return json.loads(match.group())
-
-
-def _derive_metrics(confidence: float, scientific_name: str) -> Tuple[float, float, float]:
-    """
-    Derive precision and recall from confidence using the scientific name as a stable
-    seed, then compute F1 as their harmonic mean. This ensures the three metrics are
-    always distinct while remaining deterministic for the same species.
-
-    The offsets are drawn from the species name hash so identical queries return
-    identical numbers, but precision != recall != confidence.
-    """
-    seed = int(hashlib.sha256(scientific_name.lower().encode()).hexdigest(), 16)
-
-    # Two independent offsets in the range [-0.10, +0.06] and [-0.06, +0.10]
-    # Asymmetric ranges so precision tends slightly higher than recall (realistic).
-    offset_p = ((seed & 0xFF) / 255.0) * 0.16 - 0.10        # -0.10 … +0.06
-    offset_r = (((seed >> 8) & 0xFF) / 255.0) * 0.16 - 0.06  # -0.06 … +0.10
-
-    precision = max(0.05, min(0.99, confidence + offset_p))
-    recall    = max(0.05, min(0.99, confidence + offset_r))
-    f1        = 2 * precision * recall / (precision + recall)
-
-    return round(precision, 4), round(recall, 4), round(f1, 4)
 
 
 IDENTIFY_SYSTEM = """You are an expert botanist and plant pathologist.
@@ -125,13 +101,6 @@ async def identify_plant(image_path: Path) -> Dict[str, Any]:
     # Clamp confidence from GPT
     conf = data.get("confidence")
     data["confidence"] = max(0.0, min(1.0, float(conf))) if isinstance(conf, (int, float)) else 0.0
-
-    # Derive precision, recall, F1 deterministically from confidence + species name
-    # so they are always distinct values (GPT was returning the same number for all three).
-    scientific_name = data.get("scientific_name") or "Unknown"
-    data["precision"], data["recall"], data["f1"] = _derive_metrics(
-        data["confidence"], scientific_name
-    )
 
     data.setdefault("alternatives", [])
     data.setdefault("diseases", [])
