@@ -39,9 +39,9 @@ The JSON must have exactly these keys:
   "family": "string",
   "genus": "string",
   "description": "string (1-2 sentence overview)",
-  "confidence": float between 0 and 1 to 2 decimal places — your genuine estimate based on: image clarity and angle, how many distinguishing features are visible (leaf shape, texture, colour, flowers, fruit, bark), and how many similar-looking species could be confused with this one. E.g. a perfectly lit photo of a Monstera with its iconic split leaves warrants 0.97; a blurry partial photo of a generic green leaf might be 0.43,
+  "confidence": float — reason step by step: (1) how clear and well-lit is the image? (2) which identifying features are visible? (3) could this be confused with another species? Then output a precise 2-decimal value that reflects that reasoning. Never round to a multiple of 0.05. Examples: 0.91, 0.74, 0.88, 0.63,
   "alternatives": [
-    {"common_name": "string", "scientific_name": "string", "confidence": float to 2 decimal places using the same reasoning},
+    {"common_name": "string", "scientific_name": "string", "confidence": float — same reasoning, precise 2-decimal, never a multiple of 0.05},
     ... (up to TOP_K_ALTERNATIVES entries, excluding the top prediction)
   ],
   "diseases": [
