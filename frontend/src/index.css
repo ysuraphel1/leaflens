@@ -67,7 +67,7 @@ main.content-wide { flex: 1; padding: 1.25rem 1.5rem; max-width: 1280px; margin:
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 1.5rem;
-  align-items: center;
+  align-items: stretch;
 }
 
 .dash-grid {

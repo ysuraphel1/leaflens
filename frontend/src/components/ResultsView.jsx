@@ -692,13 +692,8 @@ export default function ResultsView({ result, onReset }) {
         </div>
 
         {/* Right: metrics + action */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '.75rem', flexShrink: 0 }}>
-          <div className="dash-metric-grid">
-            <MetricChip label="Confidence" value={topConfidence} />
-            <MetricChip label="Precision"  value={result.precision} />
-            <MetricChip label="Recall"     value={result.recall} />
-            <MetricChip label="F1"         value={result.f1} />
-          </div>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'space-between', flexShrink: 0 }}>
+          <MetricChip label="Confidence" value={topConfidence} />
           <button
             className="btn btn-ghost"
             onClick={onReset}
