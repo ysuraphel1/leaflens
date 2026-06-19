@@ -4,7 +4,7 @@ import { getCare, createJournalEntry } from '../api'
 function MetricChip({ label, value }) {
   return (
     <span className="metric-chip">
-      {label}: {(value * 100).toFixed(2)}%
+      {label}: {(value * 100).toFixed(1)}%
     </span>
   )
 }
@@ -14,7 +14,7 @@ function ConfidenceBar({ label, sublabel, confidence }) {
     <li className="alt-item">
       <div className="alt-label">
         <span>{label} <em style={{ color: 'var(--gray-500)', fontStyle: 'normal', fontSize: '.82rem' }}>{sublabel}</em></span>
-        <span style={{ fontWeight: 600 }}>{(confidence * 100).toFixed(2)}%</span>
+        <span style={{ fontWeight: 600 }}>{(confidence * 100).toFixed(1)}%</span>
       </div>
       <div className="bar-bg">
         <div className="bar-fill" style={{ width: `${confidence * 100}%` }} />
