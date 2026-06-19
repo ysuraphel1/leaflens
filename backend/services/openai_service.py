@@ -39,9 +39,9 @@ The JSON must have exactly these keys:
   "family": "string",
   "genus": "string",
   "description": "string (1-2 sentence overview)",
-  "confidence": integer 0-100 — your percentage confidence based on image clarity, visible identifying features, and how easily this could be confused with a similar species. Be specific: use values like 87, 93, 71, not round multiples of 5,
+  "confidence": integer 0-1000 — score your confidence out of 1000 based on image clarity, visible identifying features, and likelihood of confusion with similar species. Examples: 873, 654, 921, 412,
   "alternatives": [
-    {"common_name": "string", "scientific_name": "string", "confidence": integer 0-100 using the same reasoning},
+    {"common_name": "string", "scientific_name": "string", "confidence": integer 0-1000 using the same reasoning},
     ... (up to TOP_K_ALTERNATIVES entries, excluding the top prediction)
   ],
   "diseases": [
@@ -98,13 +98,13 @@ async def identify_plant(image_path: Path) -> Dict[str, Any]:
     raw = response.choices[0].message.content or ""
     data = _extract_json(raw)
 
-    # GPT returns confidence as integer 0-100; normalise to 0.0-1.0
+    # GPT returns confidence as integer 0-1000; normalise to 0.0-1.0
     conf = data.get("confidence")
-    data["confidence"] = max(0.0, min(1.0, float(conf) / 100)) if isinstance(conf, (int, float)) else 0.0
+    data["confidence"] = max(0.0, min(1.0, float(conf) / 1000)) if isinstance(conf, (int, float)) else 0.0
 
     for alt in data.get("alternatives", []):
         c = alt.get("confidence")
-        alt["confidence"] = max(0.0, min(1.0, float(c) / 100)) if isinstance(c, (int, float)) else 0.0
+        alt["confidence"] = max(0.0, min(1.0, float(c) / 1000)) if isinstance(c, (int, float)) else 0.0
 
     data.setdefault("alternatives", [])
     data.setdefault("diseases", [])
