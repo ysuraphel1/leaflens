@@ -42,26 +42,7 @@ git clone https://github.com/ysuraphel1/leaflens.git
 cd leaflens
 cp .env.example .env
 # Edit .env and set OPENAI_API_KEY
-
-###
-
-iterative quickstart 
-
-Terminal 1 - PostgreSQL
-cd /workspaces/leaflens
-docker compose up db -d
-
-Terminal 2 - Backend
-cd /workspaces/leaflens
-pip install -r backend/requirements.txt
-uvicorn backend.main:app --host 0.0.0.0 --port 8000
-
-Terminal 3 - Frontend
-cd /workspaces/leaflens/frontend
-npm install
-npm run dev
-
-``
+```
 
 ### 2. Start PostgreSQL (easiest via Docker)
 
